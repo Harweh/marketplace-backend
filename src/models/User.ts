@@ -16,8 +16,15 @@ export interface IUser extends Document {
         line1: string;
         city: string;
         state: string;
+        phone?: string;
         isDefault: boolean;
     }[];
+    cart?: {
+        product: Types.ObjectId;
+        quantity: number;
+        selectedSku?: string;
+    }[];
+    wishlist?: Types.ObjectId[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -42,14 +49,23 @@ const userSchema = new Schema<IUser>(
             line1: { type: String, required: true },
             city: { type: String, required: true },
             state: { type: String, required: true },
+            phone: { type: String },
             isDefault: { type: Boolean, default: false },
         },
         ],
+        cart: [
+        {
+            product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+            quantity: { type: Number, required: true, min: 1 },
+            selectedSku: { type: String },
+        },
+        ],
+        wishlist: [{ type: Schema.Types.ObjectId, ref: "Product" }],
     },
     { timestamps: true }
 );
 
-userSchema.index({ email: 1 });
+
 userSchema.index({ role: 1 });
 
 export const User = model<IUser>("User", userSchema);

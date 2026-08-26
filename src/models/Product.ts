@@ -20,8 +20,10 @@ export interface IProduct extends Document {
     hasVariants: boolean;
     variants: IVariant[];
     totalStock: number;
+    ratingAverage: number;
+    reviewCount: number;
     status: ProductStatus;
-    rejectionReason?: string;
+    rejectionReason?: string | undefined;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -48,6 +50,8 @@ const productSchema = new Schema<IProduct>(
         hasVariants: { type: Boolean, default: false },
         variants: [variantSchema],
         totalStock: { type: Number, default: 0 },
+        ratingAverage: { type: Number, default: 0 },
+        reviewCount: { type: Number, default: 0 },
         status: {
         type: String,
         enum: Object.values(ProductStatus),

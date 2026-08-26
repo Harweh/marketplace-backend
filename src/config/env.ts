@@ -14,9 +14,13 @@ dotenv.config();
     FRONTEND_URL: z.string().default("http://localhost:3000"),
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().optional(),
-    PAYSTACK_SECRET_KEY: z.string().optional(),
-    PAYSTACK_PUBLIC_KEY: z.string().optional(),
+    PAYSTACK_SECRET_KEY: z.string().min(1, "PAYSTACK_SECRET_KEY is required"),
+    PAYSTACK_PUBLIC_KEY: z.string().min(1, "PAYSTACK_PUBLIC_KEY is required"),
     REDIS_URL: z.string().optional(),
+    CLOUDINARY_CLOUD_NAME: z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
+    CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY is required"),
+    CLOUDINARY_API_SECRET: z.string().min(1, "CLOUDINARY_API_SECRET is required"),
+    GOOGLE_MAPS_API_KEY: z.string().min(1, "GOOGLE_MAPS_API_KEY is required"),
     });
 
     const parsed = envSchema.safeParse(process.env);

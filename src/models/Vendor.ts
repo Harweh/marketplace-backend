@@ -12,6 +12,13 @@ export interface IVendor extends Document {
     status: VendorStatus;
     verificationDocs: string[];
     commissionRate: number;
+    location?: {
+        address: string;
+        city: string;
+        state: string;
+        lat: number;
+        lng: number;
+    };
     payoutAccount: {
         bankName?: string;
         accountNumber?: string;
@@ -40,6 +47,13 @@ const vendorSchema = new Schema<IVendor>(
         },
         verificationDocs: [{ type: String }],
         commissionRate: { type: Number, default: 10 },
+        location: {
+        address: { type: String },
+        city: { type: String },
+        state: { type: String },
+        lat: { type: Number },
+        lng: { type: Number },
+        },
         payoutAccount: {
         bankName: String,
         accountNumber: String,
@@ -53,7 +67,7 @@ const vendorSchema = new Schema<IVendor>(
     { timestamps: true }
 );
 
-vendorSchema.index({ storeSlug: 1 });
+
 vendorSchema.index({ status: 1 });
 
 export const Vendor = model<IVendor>("Vendor", vendorSchema);

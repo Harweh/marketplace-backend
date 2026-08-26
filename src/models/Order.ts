@@ -13,6 +13,7 @@ interface ISubOrder {
     vendor: Types.ObjectId;
     items: IOrderItem[];
     subtotal: number;
+    shippingFee: number;
     status: OrderStatus;
     trackingNumber?: string;
     shippedAt?: Date;
@@ -58,6 +59,7 @@ const subOrderSchema = new Schema<ISubOrder>({
     vendor: { type: Schema.Types.ObjectId, ref: "Vendor", required: true },
     items: [orderItemSchema],
     subtotal: { type: Number, required: true },
+    shippingFee: { type: Number, required: true, default: 0 },
     status: {
         type: String,
         enum: Object.values(OrderStatus),
