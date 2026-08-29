@@ -15,6 +15,8 @@ export const createProductSchema = z.object({
     basePrice: z.number().positive("Base price must be greater than 0"),
     hasVariants: z.boolean().default(false),
     variants: z.array(variantSchema).optional().default([]),
+    isReturnable: z.boolean().optional().default(true),
+    returnWindowDays: z.number().int().min(0).max(365).optional().default(7),
 });
 
 export const updateProductSchema = createProductSchema.partial();
@@ -36,6 +38,8 @@ export const updateCategorySchema = z.object({
     name: z.string().trim().min(2).optional(),
     parentCategory: z.string().optional(),
     isActive: z.boolean().optional(),
+    isReturnable: z.boolean().optional().default(true),
+    returnWindowDays: z.number().int().min(0).max(365).optional().default(7),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

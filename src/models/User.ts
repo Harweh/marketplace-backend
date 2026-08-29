@@ -25,6 +25,8 @@ export interface IUser extends Document {
         selectedSku?: string;
     }[];
     wishlist?: Types.ObjectId[];
+    passwordResetToken?: string;
+    passwordResetExpires?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -34,11 +36,7 @@ const userSchema = new Schema<IUser>(
         name: { type: String, required: true, trim: true },
         email: { type: String, required: true, unique: true, lowercase: true, trim: true },
         passwordHash: { type: String, required: true, select: false },
-        role: {
-        type: String,
-        enum: Object.values(Role),
-        default: Role.BUYER,
-        },
+        role: { type: String, enum: Object.values(Role), default: Role.BUYER },
         phone: { type: String },
         isEmailVerified: { type: Boolean, default: false },
         isActive: { type: Boolean, default: true },
@@ -61,11 +59,10 @@ const userSchema = new Schema<IUser>(
         },
         ],
         wishlist: [{ type: Schema.Types.ObjectId, ref: "Product" }],
+        passwordResetToken: { type: String, select: false },
+        passwordResetExpires: { type: Date, select: false },
     },
     { timestamps: true }
 );
-
-
-userSchema.index({ role: 1 });
 
 export const User = model<IUser>("User", userSchema);

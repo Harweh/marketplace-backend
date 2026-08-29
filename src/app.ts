@@ -5,13 +5,15 @@ import { env } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { authLimiter } from "./middleware/rateLimiter.js";
 import authRoutes from "./routes/authRoutes.js";
-import productRoutes from "./routes/productRoutes.js"
+import productRoutes from "./routes/productRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import vendorRoutes from "./routes/vendorRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import checkoutRoutes from "./routes/checkoutRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import returnRoutes from "./routes/returnRoutes.js";
 import * as checkoutController from "./controllers/checkoutController.js";
 
 const app: Application = express();
@@ -43,9 +45,12 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/checkout", checkoutRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/returns", returnRoutes);
 
 // TODO as we build each remaining PRD section:
 // app.use("/api/cart", cartRoutes);           // PRD 4.3 (cart stays client-side for now)
+
 
 app.use(notFoundHandler);
 app.use(errorHandler);

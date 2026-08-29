@@ -86,6 +86,8 @@ export interface Product {
     totalStock: number
     status: ProductStatus
     rejectionReason?: string
+    isReturnable: boolean
+    returnWindowDays: number
     createdAt: string
     updatedAt: string
 }

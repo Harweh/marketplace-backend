@@ -10,6 +10,8 @@ import { OrderStatus, ProductStatus } from "../config/constants.js";
 import { env } from "../config/env.js";
 import { initializeTransaction, verifyTransaction } from "../config/paystack.js";
 import { geocodeAddress, distanceKm, calculateShippingFee } from "../config/geocoding.js";
+import { notify } from "../utils/notify.js";
+import { orderConfirmedEmail, paymentFailedEmail, newOrderSellerEmail } from "../utils/emailTemplates.js";
 import { type CheckoutInput } from "../validators/checkoutValidators.js";
 
 // Shared by checkout() and previewCheckout(): validates cart items,
@@ -72,7 +74,6 @@ async function buildSubOrders(
         subOrdersByVendor.set(vendorId, existing);
     }
 
-    // Build subOrders with payout math and real, distance-based shipping.
     const subOrders = [];
     for (const [vendorId, data] of subOrdersByVendor) {
         const vendor = await Vendor.findById(vendorId);
@@ -88,10 +89,6 @@ async function buildSubOrders(
         );
         shippingFee = calculateShippingFee(km);
         }
-        // If a vendor never set a store address (older accounts, before
-        // this feature existed), shipping falls back to 0 rather than
-        // blocking checkout entirely — better to under-charge than to
-        // break orders for existing sellers.
 
         const commission = (data.subtotal * vendor.commissionRate) / 100;
         subOrders.push({
@@ -156,8 +153,6 @@ export async function checkout(
         }
 
         const subOrders = await buildSubOrders(items, shippingAddress);
-        // vendorName was only needed for the preview response — strip it
-        // before saving, since it's not part of the Order schema.
         const subOrdersForDb = subOrders.map(({ vendorName: _unused, ...rest }) => rest);
 
         const totalAmount = subOrdersForDb.reduce((sum, s) => sum + s.subtotal + s.shippingFee, 0);
@@ -188,9 +183,9 @@ export async function checkout(
 }
 
 // Shared by both the redirect-verify flow and the webhook: marks an order
-// paid and decrements stock. Safe to call twice — already-paid orders are
-// a no-op, so a webhook firing after the user already verified manually
-// (or vice versa) never double-decrements stock.
+// paid, decrements stock, and notifies everyone involved. Safe to call
+// twice — already-paid orders are a no-op, so a webhook firing after the
+// user already verified manually never double-processes anything.
 async function finalizeOrderPayment(order: InstanceType<typeof Order>) {
     if (order.paymentStatus === "paid") return order;
 
@@ -213,6 +208,36 @@ async function finalizeOrderPayment(order: InstanceType<typeof Order>) {
         }
     }
 
+    // Notify the buyer their order is confirmed.
+    const buyer = await User.findById(order.buyer);
+    if (buyer) {
+        const { subject, html } = orderConfirmedEmail(buyer.name, order.orderNumber, order.totalAmount);
+        await notify({
+        userId: buyer._id.toString(), email: buyer.email,
+        type: "order_confirmed", title: "Order Confirmed",
+        message: `Order #${order.orderNumber} confirmed.`,
+        link: "/account?tab=orders",
+        emailSubject: subject, emailHtml: html,
+        });
+    }
+
+    // Notify each seller involved that they have a new order to fulfill.
+    for (const subOrder of order.subOrders) {
+        const vendor = await Vendor.findById(subOrder.vendor);
+        if (!vendor) continue;
+        const owner = await User.findById(vendor.user);
+        if (!owner) continue;
+
+        const { subject, html } = newOrderSellerEmail(vendor.storeName, order.orderNumber, subOrder.items.length);
+        await notify({
+        userId: owner._id.toString(), email: owner.email,
+        type: "new_order", title: "New Order Received",
+        message: `New order #${order.orderNumber} received.`,
+        link: "/sell/orders",
+        emailSubject: subject, emailHtml: html,
+        });
+    }
+
     return order;
 }
 
@@ -227,7 +252,6 @@ export async function verifyPayment(req: Request<{ reference: string }>, res: Re
         throw new AppError("Order not found", 404);
         }
 
-        // Already processed — don't double-decrement stock on refresh/retry.
         if (order.paymentStatus === "paid") {
         return ok(res, order);
         }
@@ -237,10 +261,22 @@ export async function verifyPayment(req: Request<{ reference: string }>, res: Re
         if (result.status !== "success") {
         order.paymentStatus = "failed";
         await order.save();
+
+        const buyer = await User.findById(order.buyer);
+        if (buyer) {
+            const { subject, html } = paymentFailedEmail(buyer.name, order.orderNumber);
+            await notify({
+            userId: buyer._id.toString(), email: buyer.email,
+            type: "payment_failed", title: "Payment Failed",
+            message: `Payment for order #${order.orderNumber} failed.`,
+            link: "/cart",
+            emailSubject: subject, emailHtml: html,
+            });
+        }
+
         throw new AppError("Payment was not successful", 400);
         }
 
-        // Sanity check: paid amount must match what we charged for.
         const expectedKobo = Math.round(order.totalAmount * 100);
         if (result.amountKobo !== expectedKobo) {
         order.paymentStatus = "failed";
@@ -248,8 +284,6 @@ export async function verifyPayment(req: Request<{ reference: string }>, res: Re
         throw new AppError("Payment amount mismatch", 400);
         }
 
-        // Paid and stock decrement both happen in finalizeOrderPayment,
-        // shared with the webhook handler below.
         await finalizeOrderPayment(order);
 
         return ok(res, order);
@@ -260,8 +294,7 @@ export async function verifyPayment(req: Request<{ reference: string }>, res: Re
 
 // Paystack calls this server-to-server whenever a transaction completes —
 // more reliable than the redirect flow above, since it fires even if the
-// buyer closes the tab before being redirected back. The signature check
-// proves the request genuinely came from Paystack, not a spoofed call.
+// buyer closes the tab before being redirected back.
 export async function paystackWebhook(req: Request, res: Response) {
     try {
         const signature = req.headers["x-paystack-signature"] as string | undefined;
@@ -277,7 +310,6 @@ export async function paystackWebhook(req: Request, res: Response) {
         .digest("hex");
 
         if (expectedSignature !== signature) {
-        // Not actually from Paystack — ignore silently, don't leak info.
         return res.status(401).end();
         }
 
@@ -295,11 +327,8 @@ export async function paystackWebhook(req: Request, res: Response) {
         }
         }
 
-        // Always 200 quickly so Paystack doesn't retry unnecessarily.
         return res.status(200).end();
     } catch {
-        // Swallow errors here — a 500 would make Paystack retry
-        // indefinitely on a request we can't process anyway.
         return res.status(200).end();
     }
 }

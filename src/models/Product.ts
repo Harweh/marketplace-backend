@@ -24,6 +24,8 @@ export interface IProduct extends Document {
     reviewCount: number;
     status: ProductStatus;
     rejectionReason?: string | undefined;
+    isReturnable: boolean;
+    returnWindowDays: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -52,6 +54,8 @@ const productSchema = new Schema<IProduct>(
         totalStock: { type: Number, default: 0 },
         ratingAverage: { type: Number, default: 0 },
         reviewCount: { type: Number, default: 0 },
+        isReturnable: { type: Boolean, default: true },
+        returnWindowDays: { type: Number, default: 7, min: 0, max: 365 },
         status: {
         type: String,
         enum: Object.values(ProductStatus),

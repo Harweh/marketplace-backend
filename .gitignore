@@ -1,2 +1,5 @@
 .env
 node_modules
+
+
+# npx tsx src/scripts/resetPassword.ts youremail@example.com "YourNewPassword123"

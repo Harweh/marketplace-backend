@@ -66,3 +66,42 @@ export async function verifyTransaction(reference: string): Promise<VerifyResult
         reference: json.data.reference,
     };
 }
+
+interface RefundResult {
+    status: string;
+    reference: string;
+    amountKobo: number;
+}
+
+// Refunds a transaction (fully or partially). Amount is optional —
+// omit it to refund the full original amount. If provided, pass it in
+// Naira; Paystack expects kobo, so we convert internally.
+export async function refundTransaction(
+    reference: string,
+    amountNaira?: number
+): Promise<RefundResult> {
+    const body: Record<string, unknown> = { transaction: reference };
+    if (amountNaira !== undefined) {
+        body.amount = Math.round(amountNaira * 100);
+    }
+
+    const res = await fetch(`${PAYSTACK_BASE_URL}/refund`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+
+    const json = await res.json();
+    if (!json.status) {
+        throw new Error(json.message ?? "Failed to refund Paystack transaction");
+    }
+
+    return {
+        status: json.data.status,
+        reference: json.data.transaction_reference,
+        amountKobo: json.data.amount,
+    };
+}
