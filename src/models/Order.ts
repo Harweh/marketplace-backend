@@ -24,6 +24,11 @@ interface ISubOrder {
         status: "held" | "released" | "failed";
         releasedAt?: Date;
     };
+    returnStatus?: "none" | "requested" | "approved" | "rejected";
+    returnReason?: string;
+    returnPhotos?: string[];
+    returnRequestedAt?: Date;
+    returnResolvedAt?: Date;
 }
 
 export interface IOrder extends Document {
@@ -74,6 +79,15 @@ const subOrderSchema = new Schema<ISubOrder>({
         status: { type: String, enum: ["held", "released", "failed"], default: "held" },
         releasedAt: { type: Date },
     },
+    returnStatus: {
+        type: String,
+        enum: ["none", "requested", "approved", "rejected"],
+        default: "none",
+    },
+    returnReason: { type: String },
+    returnPhotos: [{ type: String }],
+    returnRequestedAt: { type: Date },
+    returnResolvedAt: { type: Date },
 });
 
 const orderSchema = new Schema<IOrder>(

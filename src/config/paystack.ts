@@ -30,7 +30,11 @@ export async function initializeTransaction(
         }),
     });
 
-    const json = await res.json();
+    const json = (await res.json()) as {
+        status: boolean;
+        message?: string;
+        data: { authorization_url: string; access_code: string; reference: string };
+    };
     if (!json.status) {
         throw new Error(json.message ?? "Failed to initialize Paystack transaction");
     }
@@ -55,7 +59,11 @@ export async function verifyTransaction(reference: string): Promise<VerifyResult
         headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}` },
     });
 
-    const json = await res.json();
+    const json = (await res.json()) as {
+        status: boolean;
+        message?: string;
+        data: { status: string; amount: number; reference: string };
+    };
     if (!json.status) {
         throw new Error(json.message ?? "Failed to verify Paystack transaction");
     }
@@ -94,7 +102,11 @@ export async function refundTransaction(
         body: JSON.stringify(body),
     });
 
-    const json = await res.json();
+    const json = (await res.json()) as {
+        status: boolean;
+        message?: string;
+        data: { status: string; transaction_reference: string; amount: number };
+    };
     if (!json.status) {
         throw new Error(json.message ?? "Failed to refund Paystack transaction");
     }

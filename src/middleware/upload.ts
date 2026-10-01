@@ -7,7 +7,7 @@ const storage = multer.memoryStorage();
 export const upload = multer({
     storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per image
-    fileFilter: (_req, file, cb) => {
+    fileFilter: (_req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
         if (!file.mimetype.startsWith("image/")) {
         return cb(new Error("Only image files are allowed"));
         }
